@@ -164,10 +164,10 @@ int main(int argc, char* argv[])
 	setIdentity(KF.measurementMatrix);
 
 	//!< process noise covariance matrix (Q)  
-	setIdentity(KF.processNoiseCov, Scalar::all(1e-5));
+	setIdentity(KF.processNoiseCov, Scalar::all(1e-2));
 
 	//!< measurement noise covariance matrix (R)  
-	setIdentity(KF.measurementNoiseCov, Scalar::all(1e-1));
+	setIdentity(KF.measurementNoiseCov, Scalar::all(1e-2));
 
 	//!< priori error estimate covariance matrix (P'(k)): P'(k)=A*P(k-1)*At + Q)*/  A代表F: transitionMatrix  
 	setIdentity(KF.errorCovPost, Scalar::all(1));
@@ -305,29 +305,29 @@ int main(int argc, char* argv[])
 				}
 
 				// Simple Filter 低通滤波y=0.5*now+0.5last
-				//if (shapes.size() == 1)
-				//{
-				//	const full_object_detection& d = shapes[0];
-				//	if (flag == -1) {
-				//		for (int i = 0; i < d.num_parts(); i++) {
-				//			cv::circle(face, cv::Point(d.part(i).x(), d.part(i).y()), 2, cv::Scalar(0, 0, 255), -1);
-				//			std::cout << i << ": " << d.part(i) << std::endl;
-				//		}
-				//		flag = 1;
-				//	}
-				//	else {
-				//		for (int i = 0; i < d.num_parts(); i++) {
-				//			cv::circle(face, cv::Point2f(d.part(i).x() * 0.5 + last_object[i].x * 0.5, d.part(i).y() * 0.5 + last_object[i].y * 0.5), 2, cv::Scalar(0, 0, 255), -1);
-				//			std::cout << i << ": " << d.part(i) << std::endl;
-				//		}
-				//	}
-				//	for (int i = 0; i < d.num_parts(); i++) 
-				//	{
-				//		last_object[i].x = d.part(i).x();
-				//		last_object[i].y = d.part(i).y();
-				//	}
-				//}
-				//imshow("Frame3", face);
+			  /*if (shapes.size() == 1)
+				{
+					const full_object_detection& d = shapes[0];
+					if (flag == -1) {
+						for (int i = 0; i < d.num_parts(); i++) {
+							cv::circle(face, cv::Point(d.part(i).x(), d.part(i).y()), 2, cv::Scalar(0, 0, 255), -1);
+							std::cout << i << ": " << d.part(i) << std::endl;
+						}
+						flag = 1;
+					}
+					else {
+						for (int i = 0; i < d.num_parts(); i++) {
+							cv::circle(face, cv::Point2f(d.part(i).x() * 0.5 + last_object[i].x * 0.5, d.part(i).y() * 0.5 + last_object[i].y * 0.5), 2, cv::Scalar(0, 0, 255), -1);
+							std::cout << i << ": " << d.part(i) << std::endl;
+						}
+					}
+					for (int i = 0; i < d.num_parts(); i++) 
+					{
+						last_object[i].x = d.part(i).x();
+						last_object[i].y = d.part(i).y();
+					}
+				}
+				imshow("Frame3", face);*/
 
 				// No Filter
 		       	if (shapes.size() == 1) {
