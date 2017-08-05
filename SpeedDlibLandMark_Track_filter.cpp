@@ -16,7 +16,7 @@ using namespace cv;
 
 #define RATIO 1
 #define SKIP_FRAMES 20
-#define AlarmLevel 0.04
+#define AlarmLevel 0.2
 #define AlarmCount 10
 int alarmCount = 0;
 double eyesClosedLevel;
@@ -42,6 +42,7 @@ struct eyeKeyPoint
 };
 
 eyeKeyPoint eyePoint;
+
 
 void draw_polyline(cv::Mat &img, const dlib::full_object_detection& d, const int start, const int end, bool isClosed = false)
 {
@@ -394,17 +395,17 @@ int main(int argc, char* argv[])
 
 				eyesClosedLevel =
 					(
-					((pow(eyePoint.leftEye.x[1] - eyePoint.leftEye.x[5], 2) + pow(eyePoint.leftEye.y[1] - eyePoint.leftEye.y[5], 2)) +
-						(pow(eyePoint.leftEye.x[2] - eyePoint.leftEye.x[4], 2) + pow(eyePoint.leftEye.y[2] - eyePoint.leftEye.y[4], 2))
+					(sqrt(pow(eyePoint.leftEye.x[1] - eyePoint.leftEye.x[5], 2) + pow(eyePoint.leftEye.y[1] - eyePoint.leftEye.y[5], 2)) +
+						sqrt(pow(eyePoint.leftEye.x[2] - eyePoint.leftEye.x[4], 2) + pow(eyePoint.leftEye.y[2] - eyePoint.leftEye.y[4], 2))
 						)
-						/ (2 * (pow(eyePoint.leftEye.x[0] - eyePoint.leftEye.x[3], 2) + pow(eyePoint.leftEye.y[0] - eyePoint.leftEye.y[3], 2)))
+						/ (2 * sqrt(pow(eyePoint.leftEye.x[0] - eyePoint.leftEye.x[3], 2) + pow(eyePoint.leftEye.y[0] - eyePoint.leftEye.y[3], 2)))
 
 						+
 
-						((pow(eyePoint.rightEye.x[1] - eyePoint.rightEye.x[5], 2) + pow(eyePoint.rightEye.y[1] - eyePoint.rightEye.y[5], 2)) +
-						(pow(eyePoint.rightEye.x[2] - eyePoint.rightEye.x[4], 2) + pow(eyePoint.rightEye.y[2] - eyePoint.rightEye.y[4], 2))
+						(sqrt(pow(eyePoint.rightEye.x[1] - eyePoint.rightEye.x[5], 2) + pow(eyePoint.rightEye.y[1] - eyePoint.rightEye.y[5], 2)) +
+							sqrt(pow(eyePoint.rightEye.x[2] - eyePoint.rightEye.x[4], 2) + pow(eyePoint.rightEye.y[2] - eyePoint.rightEye.y[4], 2))
 							)
-						/ (2 * (pow(eyePoint.rightEye.x[0] - eyePoint.rightEye.x[3], 2) + pow(eyePoint.rightEye.y[0] - eyePoint.rightEye.y[3], 2)))
+						/ (2 * sqrt(pow(eyePoint.rightEye.x[0] - eyePoint.rightEye.x[3], 2) + pow(eyePoint.rightEye.y[0] - eyePoint.rightEye.y[3], 2)))
 
 						) / 2;
 
