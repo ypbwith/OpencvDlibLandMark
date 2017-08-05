@@ -15,13 +15,13 @@ using namespace std;
 using namespace cv;
 
 #define RATIO 1
-#define SKIP_FRAMES 10
-#define AlarmLevel 0.05
-#define AlarmCount 15
+#define SKIP_FRAMES 20
+#define AlarmLevel 0.04
+#define AlarmCount 10
 int alarmCount = 0;
 double eyesClosedLevel;
 
-struct leftEyePoint 
+struct leftEyePoint
 {
 	double x[6];
 	double y[6];
@@ -33,7 +33,7 @@ struct rightEyePoint
 	double y[6];
 };
 
-struct eyeKeyPoint 
+struct eyeKeyPoint
 {
 	leftEyePoint leftEye;
 
@@ -51,7 +51,7 @@ void draw_polyline(cv::Mat &img, const dlib::full_object_detection& d, const int
 		points.push_back(cv::Point(d.part(i).x(), d.part(i).y()));
 	}
 
-	cv::polylines(img, points, isClosed, cv::Scalar(255, 0, 0), 1, 8);
+	cv::polylines(img, points, isClosed, cv::Scalar(255, 0, 0), 1, 16);
 
 }
 
@@ -74,7 +74,7 @@ void render_face(cv::Mat &img, const dlib::full_object_detection& d)
 	draw_polyline(img, d, 48, 59, true);    // Outer lip
 	draw_polyline(img, d, 60, 67, true);    // Inner lip
 
-	
+
 
 }
 
@@ -89,8 +89,8 @@ void ZeroRect(dlib::rectangle &rect)
 int main(int argc, char* argv[])
 {
 	Py_Initialize();//初始化python  
-	
-	// 检查初始化是否成功  
+
+					// 检查初始化是否成功  
 	if (!Py_IsInitialized()) {
 		return -1;
 	}
@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
 	PyObject *pModule = NULL, *pFunc = NULL, *pArg = NULL;
 
 	pModule = PyImport_ImportModule("pysound");//引入模块  
-	
+
 	if (!pModule) {
 		printf("can't find pysound.py");
 		getchar();
@@ -107,13 +107,13 @@ int main(int argc, char* argv[])
 
 	pFunc = PyObject_GetAttrString(pModule, "sound_alarm");//直接获取模块中的函数  
 
-	//pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档  
+														   //pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档  
 
-	//PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数  
+														   //PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数  
 
-	//Py_Finalize(); //释放python  
+														   //Py_Finalize(); //释放python  
 
-	// Initialize the points of last frame
+														   // Initialize the points of last frame
 	std::vector<cv::Point2f> last_object;
 	for (int i = 0; i < 68; ++i) {
 		last_object.push_back(cv::Point2f(0.0, 0.0));
@@ -164,7 +164,7 @@ int main(int argc, char* argv[])
 	setIdentity(KF.measurementMatrix);
 
 	//!< process noise covariance matrix (Q)  
-	setIdentity(KF.processNoiseCov, Scalar::all(1e-2));
+	setIdentity(KF.processNoiseCov, Scalar::all(1e-3));
 
 	//!< measurement noise covariance matrix (R)  
 	setIdentity(KF.measurementNoiseCov, Scalar::all(1e-2));
@@ -208,7 +208,7 @@ int main(int argc, char* argv[])
 		// Define initial boundibg box
 		Rect2d facebox(0, 0, 0, 0);
 		Rect2d facebox_RATIO(0, 0, 0, 0);
-		dlib::rectangle facePostion(0,0,0,0);
+		dlib::rectangle facePostion(0, 0, 0, 0);
 
 		while (1)
 		{
@@ -220,14 +220,14 @@ int main(int argc, char* argv[])
 			// Detect faces  
 			countframe++;
 			/*if (countframe == SKIP_FRAMES)
-				countframe = 0;*/
+			countframe = 0;*/
 
 			//cout << countframe << endl;
 			if ((trackflag == 0) || countframe == SKIP_FRAMES)
 			{
 				countframe = 0;
 				faces = detector(cimg_small);
-				if (faces.size() >0 )
+				if (faces.size() >0)
 				{
 					facePostion = faces.at(0);
 					facebox_RATIO.x = faces.at(0).left();
@@ -243,8 +243,8 @@ int main(int argc, char* argv[])
 
 			else if (trackflag == 1 && countframe != SKIP_FRAMES)
 			{
-	           
-				if(!facePostion.is_empty())
+
+				if (!facePostion.is_empty())
 				{
 					//printf("----------------------what  0----------------------------\n");
 					//
@@ -253,7 +253,7 @@ int main(int argc, char* argv[])
 				}
 				else
 				{
-					facePostion = dlib::rectangle(0,0,0,0);
+					facePostion = dlib::rectangle(0, 0, 0, 0);
 					trackflag = 0;
 				}
 			}
@@ -263,7 +263,7 @@ int main(int argc, char* argv[])
 				// Find the pose of each face.  
 				std::vector<full_object_detection> shapes;
 
-			
+
 
 				dlib::rectangle r(
 					(long)(facePostion.left() * RATIO),
@@ -291,8 +291,8 @@ int main(int argc, char* argv[])
 				cv::Mat face_2 = img.clone();
 				cv::Mat face_3 = img.clone();
 				cv::Mat frame = img.clone();
-				
-			
+
+
 				if (shapes.size() == 1)
 				{
 					const full_object_detection& d = shapes[0];
@@ -305,36 +305,36 @@ int main(int argc, char* argv[])
 				}
 
 				// Simple Filter 低通滤波y=0.5*now+0.5last
-			  /*if (shapes.size() == 1)
+				/*if (shapes.size() == 1)
 				{
-					const full_object_detection& d = shapes[0];
-					if (flag == -1) {
-						for (int i = 0; i < d.num_parts(); i++) {
-							cv::circle(face, cv::Point(d.part(i).x(), d.part(i).y()), 2, cv::Scalar(0, 0, 255), -1);
-							std::cout << i << ": " << d.part(i) << std::endl;
-						}
-						flag = 1;
-					}
-					else {
-						for (int i = 0; i < d.num_parts(); i++) {
-							cv::circle(face, cv::Point2f(d.part(i).x() * 0.5 + last_object[i].x * 0.5, d.part(i).y() * 0.5 + last_object[i].y * 0.5), 2, cv::Scalar(0, 0, 255), -1);
-							std::cout << i << ": " << d.part(i) << std::endl;
-						}
-					}
-					for (int i = 0; i < d.num_parts(); i++) 
-					{
-						last_object[i].x = d.part(i).x();
-						last_object[i].y = d.part(i).y();
-					}
+				const full_object_detection& d = shapes[0];
+				if (flag == -1) {
+				for (int i = 0; i < d.num_parts(); i++) {
+				cv::circle(face, cv::Point(d.part(i).x(), d.part(i).y()), 2, cv::Scalar(0, 0, 255), -1);
+				std::cout << i << ": " << d.part(i) << std::endl;
+				}
+				flag = 1;
+				}
+				else {
+				for (int i = 0; i < d.num_parts(); i++) {
+				cv::circle(face, cv::Point2f(d.part(i).x() * 0.5 + last_object[i].x * 0.5, d.part(i).y() * 0.5 + last_object[i].y * 0.5), 2, cv::Scalar(0, 0, 255), -1);
+				std::cout << i << ": " << d.part(i) << std::endl;
+				}
+				}
+				for (int i = 0; i < d.num_parts(); i++)
+				{
+				last_object[i].x = d.part(i).x();
+				last_object[i].y = d.part(i).y();
+				}
 				}
 				imshow("Frame3", face);*/
 
 				// No Filter
-		       	if (shapes.size() == 1) {
+				if (shapes.size() == 1) {
 					const full_object_detection& d = shapes[0];
 					/*for (int i = 0; i < d.num_parts(); i++) {
-						cv::circle(face_2, cv::Point2f(int(d.part(i).x()), int(d.part(i).y())), 2, cv::Scalar(0, 255, 255), -1);
-						std::cout << i << ": " << d.part(i) << std::endl;
+					cv::circle(face_2, cv::Point2f(int(d.part(i).x()), int(d.part(i).y())), 2, cv::Scalar(0, 255, 255), -1);
+					std::cout << i << ": " << d.part(i) << std::endl;
 					}*/
 					for (int i = 0; i < d.num_parts(); i++) {
 						kalman_points[i].x = d.part(i).x();
@@ -381,60 +381,60 @@ int main(int argc, char* argv[])
 				for (int i = 36; i <= 41; i++)
 				{
 
-					eyePoint.leftEye.x[i - 36] = shape.part(i).x();
-					eyePoint.leftEye.y[i - 36] = shape.part(i).y();
-	            }
+					eyePoint.leftEye.x[i - 36] = predict_points[i].x;//shape.part(i).x();
+					eyePoint.leftEye.y[i - 36] = predict_points[i].y;//shape.part(i).y();
+				}
 
 				for (int i = 42; i <= 47; i++)
 				{
 
-					eyePoint.leftEye.x[i - 42] = shape.part(i).x();
-					eyePoint.leftEye.y[i - 42] = shape.part(i).y();
+					eyePoint.rightEye.x[i - 42] = shape.part(i).x();
+					eyePoint.rightEye.y[i - 42] = shape.part(i).y();
 				}
 
 				eyesClosedLevel =
-					   (
-					   ((pow(eyePoint.leftEye.x[1] - eyePoint.leftEye.x[5], 2) + pow(eyePoint.leftEye.y[1] - eyePoint.leftEye.y[5], 2)) +
+					(
+					((pow(eyePoint.leftEye.x[1] - eyePoint.leftEye.x[5], 2) + pow(eyePoint.leftEye.y[1] - eyePoint.leftEye.y[5], 2)) +
 						(pow(eyePoint.leftEye.x[2] - eyePoint.leftEye.x[4], 2) + pow(eyePoint.leftEye.y[2] - eyePoint.leftEye.y[4], 2))
 						)
 						/ (2 * (pow(eyePoint.leftEye.x[0] - eyePoint.leftEye.x[3], 2) + pow(eyePoint.leftEye.y[0] - eyePoint.leftEye.y[3], 2)))
 
 						+
 
-						((pow(eyePoint.leftEye.x[1] - eyePoint.leftEye.x[5], 2) + pow(eyePoint.leftEye.y[1] - eyePoint.leftEye.y[5], 2)) +
-						(pow(eyePoint.leftEye.x[2] - eyePoint.leftEye.x[4], 2) + pow(eyePoint.leftEye.y[2] - eyePoint.leftEye.y[4], 2))
+						((pow(eyePoint.rightEye.x[1] - eyePoint.rightEye.x[5], 2) + pow(eyePoint.rightEye.y[1] - eyePoint.rightEye.y[5], 2)) +
+						(pow(eyePoint.rightEye.x[2] - eyePoint.rightEye.x[4], 2) + pow(eyePoint.rightEye.y[2] - eyePoint.rightEye.y[4], 2))
 							)
-						/ (2 * (pow(eyePoint.leftEye.x[0] - eyePoint.leftEye.x[3], 2) + pow(eyePoint.leftEye.y[0] - eyePoint.leftEye.y[3], 2)))
+						/ (2 * (pow(eyePoint.rightEye.x[0] - eyePoint.rightEye.x[3], 2) + pow(eyePoint.rightEye.y[0] - eyePoint.rightEye.y[3], 2)))
 
 						) / 2;
 
-				
+
 				if (eyesClosedLevel < AlarmLevel)
 				{
-                    alarmCount++;
+					alarmCount++;
 					if (alarmCount > AlarmCount)
 					{
-							alarmCount = 0;
+						alarmCount = 0;
 
-							pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档  
+						pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档  
 
-							PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数  
+						PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数  
 					}
-				
+
 				}
 				else
 				{
 					alarmCount = 0;
 				}
 
-				char PutString[20] ;
+				char PutString[20];
 				sprintf(PutString, "eyeCloseLevel:%f\n", eyesClosedLevel);
 				printf(PutString);
 				cv::putText(img, PutString, cv::Point(15, 15),
 					FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
 
 			}
-		    
+
 
 			//std::cout << "count:" << count << std::endl;
 			//Display it all on the screen  
