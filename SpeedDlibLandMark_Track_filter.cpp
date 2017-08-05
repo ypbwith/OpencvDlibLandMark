@@ -17,7 +17,7 @@ using namespace cv;
 #define RATIO 1
 #define SKIP_FRAMES 20
 #define AlarmLevel 0.2
-#define AlarmCount 10
+#define AlarmCount 6
 int alarmCount = 0;
 double eyesClosedLevel;
 
@@ -285,93 +285,60 @@ int main(int argc, char* argv[])
 				full_object_detection shape = pose_model(cimg, r);
 				shapes.push_back(shape);
 
-				//------------------------------Filter-------------------------------------------
-				// We cannot modify temp so we clone a new one
-				cv::Mat face = img.clone();
-				// We strict to detecting one face
-				cv::Mat face_2 = img.clone();
-				cv::Mat face_3 = img.clone();
-				cv::Mat frame = img.clone();
+				//------------------------------KF-------------------------------------------
+			
+				//if (shapes.size() == 1)
+				//{
+				//	const full_object_detection& d = shapes[0];
+				//	for (int i = 0; i < d.num_parts(); i++)
+				//	{
+				//		prevTrackPts[i].x = d.part(i).x();
+				//		prevTrackPts[i].y = d.part(i).y();
+				//	}
 
+				//}
 
-				if (shapes.size() == 1)
-				{
-					const full_object_detection& d = shapes[0];
-					for (int i = 0; i < d.num_parts(); i++)
-					{
-						prevTrackPts[i].x = d.part(i).x();
-						prevTrackPts[i].y = d.part(i).y();
-					}
+				//if (shapes.size() == 1) {
+				//	const full_object_detection& d = shapes[0];
+				//	/*for (int i = 0; i < d.num_parts(); i++) {
+				//	cv::circle(face_2, cv::Point2f(int(d.part(i).x()), int(d.part(i).y())), 2, cv::Scalar(0, 255, 255), -1);
+				//	std::cout << i << ": " << d.part(i) << std::endl;
+				//	}*/
+				//	for (int i = 0; i < d.num_parts(); i++) {
+				//		kalman_points[i].x = d.part(i).x();
+				//		kalman_points[i].y = d.part(i).y();
+				//	}
+				//}
 
-				}
+				//// Kalman Prediction
+				//// cv::Point2f statePt = cv::Point2f(KF.statePost.at<float>(0), KF.statePost.at<float>(1));
+				//Mat prediction = KF.predict();
+				//// std::vector<cv::Point2f> predict_points;
+				//for (int i = 0; i < 68; i++) {
+				//	predict_points[i].x = prediction.at<float>(i * 2);
+				//	predict_points[i].y = prediction.at<float>(i * 2 + 1);
+				//}
 
-				// Simple Filter 低通滤波y=0.5*now+0.5last
-				/*if (shapes.size() == 1)
-				{
-				const full_object_detection& d = shapes[0];
-				if (flag == -1) {
-				for (int i = 0; i < d.num_parts(); i++) {
-				cv::circle(face, cv::Point(d.part(i).x(), d.part(i).y()), 2, cv::Scalar(0, 0, 255), -1);
-				std::cout << i << ": " << d.part(i) << std::endl;
-				}
-				flag = 1;
-				}
-				else {
-				for (int i = 0; i < d.num_parts(); i++) {
-				cv::circle(face, cv::Point2f(d.part(i).x() * 0.5 + last_object[i].x * 0.5, d.part(i).y() * 0.5 + last_object[i].y * 0.5), 2, cv::Scalar(0, 0, 255), -1);
-				std::cout << i << ": " << d.part(i) << std::endl;
-				}
-				}
-				for (int i = 0; i < d.num_parts(); i++)
-				{
-				last_object[i].x = d.part(i).x();
-				last_object[i].y = d.part(i).y();
-				}
-				}
-				imshow("Frame3", face);*/
+				//// Update Measurement
+				//for (int i = 0; i < 136; i++) {
+				//	if (i % 2 == 0) {
+				//		measurement.at<float>(i) = (float)kalman_points[i / 2].x;
+				//	}
+				//	else {
+				//		measurement.at<float>(i) = (float)kalman_points[(i - 1) / 2].y;
+				//	}
+				//}
 
-				// No Filter
-				if (shapes.size() == 1) {
-					const full_object_detection& d = shapes[0];
-					/*for (int i = 0; i < d.num_parts(); i++) {
-					cv::circle(face_2, cv::Point2f(int(d.part(i).x()), int(d.part(i).y())), 2, cv::Scalar(0, 255, 255), -1);
-					std::cout << i << ": " << d.part(i) << std::endl;
-					}*/
-					for (int i = 0; i < d.num_parts(); i++) {
-						kalman_points[i].x = d.part(i).x();
-						kalman_points[i].y = d.part(i).y();
-					}
-				}
+				//measurement += KF.measurementMatrix * state;
 
-				// Kalman Prediction
-				// cv::Point2f statePt = cv::Point2f(KF.statePost.at<float>(0), KF.statePost.at<float>(1));
-				Mat prediction = KF.predict();
-				// std::vector<cv::Point2f> predict_points;
-				for (int i = 0; i < 68; i++) {
-					predict_points[i].x = prediction.at<float>(i * 2);
-					predict_points[i].y = prediction.at<float>(i * 2 + 1);
-				}
-
-				// Update Measurement
-				for (int i = 0; i < 136; i++) {
-					if (i % 2 == 0) {
-						measurement.at<float>(i) = (float)kalman_points[i / 2].x;
-					}
-					else {
-						measurement.at<float>(i) = (float)kalman_points[(i - 1) / 2].y;
-					}
-				}
-
-				measurement += KF.measurementMatrix * state;
-
-				// Correct Measurement
-				KF.correct(measurement);
+				//// Correct Measurement
+				//KF.correct(measurement);
 
 				// Show 68-points utilizing kalman filter
-				for (int i = 0; i < 68; i++) {
-					cv::circle(face_3, predict_points[i], 2, cv::Scalar(255, 0, 0), -1);
+				/*for (int i = 0; i < 68; i++) {
+					cv::circle(face_kf, predict_points[i], 2, cv::Scalar(255, 0, 0), -1);
 				}
-				imshow("Frame2", face_3);
+				imshow("Frame2", face_3);*/
 				//-----------------------------------------------------------------------------------------
 
 
@@ -382,16 +349,30 @@ int main(int argc, char* argv[])
 				for (int i = 36; i <= 41; i++)
 				{
 
-					eyePoint.leftEye.x[i - 36] = predict_points[i].x;//shape.part(i).x();
-					eyePoint.leftEye.y[i - 36] = predict_points[i].y;//shape.part(i).y();
+					eyePoint.leftEye.x[i - 36] = 0.4*shape.part(i).x()+0.6*last_object[i].x;//predict_points[i].x;
+					eyePoint.leftEye.y[i - 36] = 0.4*shape.part(i).y()+0.6*last_object[i].y;//predict_points[i].y;
 				}
 
 				for (int i = 42; i <= 47; i++)
 				{
 
-					eyePoint.rightEye.x[i - 42] = shape.part(i).x();
-					eyePoint.rightEye.y[i - 42] = shape.part(i).y();
+					eyePoint.rightEye.x[i - 42] = 0.4*shape.part(i).x() + 0.6*last_object[i].x;//predict_points[i].x;
+					eyePoint.rightEye.y[i - 42] = 0.4*shape.part(i).y() + 0.6*last_object[i].y;//predict_points[i].y;
 				}
+
+
+				// -----------------------------low pass-y=0.4now+0.6last---------------------------------------------
+			    if (shapes.size() == 1)
+				{
+					const full_object_detection& d = shapes[0];
+						
+					for (int i = 0; i < d.num_parts(); i++)
+					{
+							last_object[i].x = d.part(i).x();
+							last_object[i].y = d.part(i).y();
+					}
+				}
+                //---------------------------------------------------------------------------------------------
 
 				eyesClosedLevel =
 					(
