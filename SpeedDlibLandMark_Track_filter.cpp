@@ -17,7 +17,7 @@ using namespace cv;
 #define RATIO 1
 #define SKIP_FRAMES 20
 #define AlarmLevel 0.2
-#define AlarmCount 6
+#define AlarmCount 30
 int alarmCount = 0;
 double eyesClosedLevel;
 
@@ -65,17 +65,15 @@ void render_face(cv::Mat &img, const dlib::full_object_detection& d)
 		<< "\n\t d.num_parts():  " << d.num_parts()
 	);
 
-	draw_polyline(img, d, 0, 16);           // Jaw line
-	draw_polyline(img, d, 17, 21);          // Left eyebrow
-	draw_polyline(img, d, 22, 26);          // Right eyebrow
+	//draw_polyline(img, d, 0, 16);           // Jaw line
+	//draw_polyline(img, d, 17, 21);          // Left eyebrow
+	//draw_polyline(img, d, 22, 26);          // Right eyebrow
 	draw_polyline(img, d, 27, 30);          // Nose bridge
 	draw_polyline(img, d, 30, 35, true);    // Lower nose
 	draw_polyline(img, d, 36, 41, true);    // Left eye
 	draw_polyline(img, d, 42, 47, true);    // Right Eye
-	draw_polyline(img, d, 48, 59, true);    // Outer lip
-	draw_polyline(img, d, 60, 67, true);    // Inner lip
-
-
+	//draw_polyline(img, d, 48, 59, true);    // Outer lip
+	//draw_polyline(img, d, 60, 67, true);    // Inner lip
 
 }
 
@@ -89,101 +87,103 @@ void ZeroRect(dlib::rectangle &rect)
 
 int main(int argc, char* argv[])
 {
-	Py_Initialize();//初始化python  
+	//Py_Initialize();//初始化python  
 
-					// 检查初始化是否成功  
-	if (!Py_IsInitialized()) {
-		return -1;
-	}
+	//				// 检查初始化是否成功  
+	//if (!Py_IsInitialized()) {
+	//	return -1;
+	//}
 
-	PyObject *pModule = NULL, *pFunc = NULL, *pArg = NULL;
+	//PyObject *pModule = NULL, *pFunc = NULL, *pArg = NULL;
 
-	pModule = PyImport_ImportModule("pysound");//引入模块  
+	//pModule = PyImport_ImportModule("pysound");//引入模块  
 
-	if (!pModule) {
-		printf("can't find pysound.py");
-		getchar();
-		return -1;
-	}
+	//if (!pModule) {
+	//	printf("can't find pysound.py");
+	//	getchar();
+	//	return -1;
+	//}
 
-	pFunc = PyObject_GetAttrString(pModule, "sound_alarm");//直接获取模块中的函数  
+	//pFunc = PyObject_GetAttrString(pModule, "sound_alarm");//直接获取模块中的函数  
 
-														   //pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档  
+	//pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档  
 
-														   //PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数  
+	//PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数  
 
-														   //Py_Finalize(); //释放python  
+	//Py_Finalize(); //释放python  
 
-														   // Initialize the points of last frame
+	// Initialize the points of last frame
+	//---------------------------------------------------------------------------------------------
 	std::vector<cv::Point2f> last_object;
 	for (int i = 0; i < 68; ++i) {
 		last_object.push_back(cv::Point2f(0.0, 0.0));
 	}
 
-	double scaling = 0.5;
-	int flag = -1;
-	int count = 0;
+	//double scaling = 0.5;
+	//int flag = -1;
+	//int count = 0;
 
-	// Initialize measurement points
-	std::vector<cv::Point2f> kalman_points;
-	for (int i = 0; i < 68; i++) {
-		kalman_points.push_back(cv::Point2f(0.0, 0.0));
-	}
+	//// Initialize measurement points
+	//std::vector<cv::Point2f> kalman_points;
+	//for (int i = 0; i < 68; i++) {
+	//	kalman_points.push_back(cv::Point2f(0.0, 0.0));
+	//}
 
-	// Initialize prediction points
-	std::vector<cv::Point2f> predict_points;
-	for (int i = 0; i < 68; i++) {
-		predict_points.push_back(cv::Point2f(0.0, 0.0));
-	}
+	//// Initialize prediction points
+	//std::vector<cv::Point2f> predict_points;
+	//for (int i = 0; i < 68; i++) {
+	//	predict_points.push_back(cv::Point2f(0.0, 0.0));
+	//}
 
-	// Kalman Filter Setup (68 Points Test)
-	const int stateNum = 272;
-	const int measureNum = 136;
+	//// Kalman Filter Setup (68 Points Test)
+	//const int stateNum = 272;
+	//const int measureNum = 136;
 
-	KalmanFilter KF(stateNum, measureNum, 0);
-	Mat state(stateNum, 1, CV_32FC1);
-	Mat processNoise(stateNum, 1, CV_32F);
-	Mat measurement = Mat::zeros(measureNum, 1, CV_32F);
+	//KalmanFilter KF(stateNum, measureNum, 0);
+	//Mat state(stateNum, 1, CV_32FC1);
+	//Mat processNoise(stateNum, 1, CV_32F);
+	//Mat measurement = Mat::zeros(measureNum, 1, CV_32F);
 
-	// Generate a matrix randomly
-	randn(state, Scalar::all(0), Scalar::all(0.0));
+	//// Generate a matrix randomly
+	//randn(state, Scalar::all(0), Scalar::all(0.0));
 
-	// Generate the Measurement Matrix
-	KF.transitionMatrix = Mat::zeros(272, 272, CV_32F);
-	for (int i = 0; i < 272; i++) {
-		for (int j = 0; j < 272; j++) {
-			if (i == j || (j - 136) == i) {
-				KF.transitionMatrix.at<float>(i, j) = 1.0;
-			}
-			else {
-				KF.transitionMatrix.at<float>(i, j) = 0.0;
-			}
-		}
-	}
+	//// Generate the Measurement Matrix
+	//KF.transitionMatrix = Mat::zeros(272, 272, CV_32F);
+	//for (int i = 0; i < 272; i++) {
+	//	for (int j = 0; j < 272; j++) {
+	//		if (i == j || (j - 136) == i) {
+	//			KF.transitionMatrix.at<float>(i, j) = 1.0;
+	//		}
+	//		else {
+	//			KF.transitionMatrix.at<float>(i, j) = 0.0;
+	//		}
+	//	}
+	//}
 
-	//!< measurement matrix (H) 观测模型  
-	setIdentity(KF.measurementMatrix);
+	////!< measurement matrix (H) 观测模型  
+	//setIdentity(KF.measurementMatrix);
 
-	//!< process noise covariance matrix (Q)  
-	setIdentity(KF.processNoiseCov, Scalar::all(1e-3));
+	////!< process noise covariance matrix (Q)  
+	//setIdentity(KF.processNoiseCov, Scalar::all(1e-3));
 
-	//!< measurement noise covariance matrix (R)  
-	setIdentity(KF.measurementNoiseCov, Scalar::all(1e-2));
+	////!< measurement noise covariance matrix (R)  
+	//setIdentity(KF.measurementNoiseCov, Scalar::all(1e-2));
 
-	//!< priori error estimate covariance matrix (P'(k)): P'(k)=A*P(k-1)*At + Q)*/  A代表F: transitionMatrix  
-	setIdentity(KF.errorCovPost, Scalar::all(1));
+	////!< priori error estimate covariance matrix (P'(k)): P'(k)=A*P(k-1)*At + Q)*/  A代表F: transitionMatrix  
+	//setIdentity(KF.errorCovPost, Scalar::all(1));
 
-	randn(KF.statePost, Scalar::all(0), Scalar::all(0.1));
+	//randn(KF.statePost, Scalar::all(0), Scalar::all(0.1));
 
-	cv::Mat prevgray, gray;
+	//cv::Mat prevgray, gray;
 
-	std::vector<cv::Point2f> prevTrackPts;
-	std::vector<cv::Point2f> nextTrackPts;
-	for (int i = 0; i < 68; i++) {
-		prevTrackPts.push_back(cv::Point2f(0, 0));
-		// nextTrackPts.push_back(cv::Point2f(0, 0));
-	}
+	//std::vector<cv::Point2f> prevTrackPts;
+	//std::vector<cv::Point2f> nextTrackPts;
+	//for (int i = 0; i < 68; i++) {
+	//	prevTrackPts.push_back(cv::Point2f(0, 0));
+	//	// nextTrackPts.push_back(cv::Point2f(0, 0));
+	//}
 
+	//-----------------------------------------------------------------------------------------------
 	try
 	{
 		cv::VideoCapture cap(0);
@@ -214,6 +214,17 @@ int main(int argc, char* argv[])
 		while (1)
 		{
 			cap >> img;
+
+			Mat grayscale_image, img_adaptive;
+			cvtColor(img, grayscale_image, CV_BGR2GRAY);
+
+			int block_size = 25;
+			double offset = 5;
+			int threadshould_type = CV_THRESH_BINARY;
+			int adaptive_method = CV_ADAPTIVE_THRESH_GAUSSIAN_C;
+			adaptiveThreshold(grayscale_image, img_adaptive, 255, adaptive_method, threadshould_type, block_size, offset);
+			imshow("facefilter", img_adaptive);
+
 			cv::resize(img, img_small, cv::Size(), 1.0 / RATIO, 1.0 / RATIO);
 
 			cv_image<bgr_pixel> cimg(img);
@@ -248,7 +259,6 @@ int main(int argc, char* argv[])
 				if (!facePostion.is_empty())
 				{
 					//printf("----------------------what  0----------------------------\n");
-					//
 					tracker.update(cimg_small);
 					facePostion = tracker.get_position();
 				}
@@ -273,20 +283,19 @@ int main(int argc, char* argv[])
 					(long)(facePostion.bottom() * RATIO)
 				);
 
-				////cout<< (long)(faces[1].left())<<'\n';
-				//facebox.x = r.left();
-				//facebox.y = r.top();
-				//facebox.width = r.right() - facebox.x;
-				//facebox.height = r.bottom() - facebox.y;
-				//cv::rectangle(img, facebox, Scalar(255, 0, 0), 2, 1);
+				//cout<< (long)(faces[1].left())<<'\n';
+				facebox.x = r.left();
+				facebox.y = r.top();
+				facebox.width = r.right() - facebox.x;
+				facebox.height = r.bottom() - facebox.y;
+				cv::rectangle(img, facebox, Scalar(255, 0, 0), 2, 1);
 
 
 				// Landmark detection on full sized image
 				full_object_detection shape = pose_model(cimg, r);
 				shapes.push_back(shape);
 
-				//------------------------------KF-------------------------------------------
-			
+				//------------------------------KF--------------------------------------------------------------------
 				//if (shapes.size() == 1)
 				//{
 				//	const full_object_detection& d = shapes[0];
@@ -336,43 +345,53 @@ int main(int argc, char* argv[])
 
 				// Show 68-points utilizing kalman filter
 				/*for (int i = 0; i < 68; i++) {
-					cv::circle(face_kf, predict_points[i], 2, cv::Scalar(255, 0, 0), -1);
+				cv::circle(face_kf, predict_points[i], 2, cv::Scalar(255, 0, 0), -1);
 				}
 				imshow("Frame2", face_3);*/
-				//-----------------------------------------------------------------------------------------
+				//-------------------------------------------------------------------------------------------------
 
-
-
-				// Custom Face Render
-				render_face(img, shape);
 
 				for (int i = 36; i <= 41; i++)
 				{
 
-					eyePoint.leftEye.x[i - 36] = 0.4*shape.part(i).x()+0.6*last_object[i].x;//predict_points[i].x;
-					eyePoint.leftEye.y[i - 36] = 0.4*shape.part(i).y()+0.6*last_object[i].y;//predict_points[i].y;
+					eyePoint.leftEye.x[i - 36] = 0.01*shape.part(i).x() + 0.99*last_object[i].x;//predict_points[i].x;
+					eyePoint.leftEye.y[i - 36] = 0.01*shape.part(i).y() + 0.99*last_object[i].y;//predict_points[i].y;
+
+					//cv::circle(facefilter, cv::Point(eyePoint.leftEye.x[i - 36], eyePoint.leftEye.y[i - 36]), 2, cv::Scalar(255, 0, 0), -1);
 				}
 
 				for (int i = 42; i <= 47; i++)
 				{
 
-					eyePoint.rightEye.x[i - 42] = 0.4*shape.part(i).x() + 0.6*last_object[i].x;//predict_points[i].x;
-					eyePoint.rightEye.y[i - 42] = 0.4*shape.part(i).y() + 0.6*last_object[i].y;//predict_points[i].y;
+					eyePoint.rightEye.x[i - 42] = 0.01*shape.part(i).x() + 0.99*last_object[i].x;//predict_points[i].x;
+					eyePoint.rightEye.y[i - 42] = 0.01*shape.part(i).y() + 0.99*last_object[i].y;//predict_points[i].y;
+
+					//cv::circle(facefilter, cv::Point(eyePoint.rightEye.x[i - 42], eyePoint.rightEye.y[i - 42]), 2, cv::Scalar(255, 0, 0), -1);
 				}
 
-
+			
 				// -----------------------------low pass-y=0.4now+0.6last---------------------------------------------
-			    if (shapes.size() == 1)
+			
+		
+
+				if (shapes.size() == 1)
 				{
 					const full_object_detection& d = shapes[0];
-						
+
 					for (int i = 0; i < d.num_parts(); i++)
 					{
-							last_object[i].x = d.part(i).x();
-							last_object[i].y = d.part(i).y();
+						last_object[i].x = d.part(i).x();
+						last_object[i].y = d.part(i).y();
 					}
 				}
-                //---------------------------------------------------------------------------------------------
+
+				/*//cv::Mat facefilter = img.clone();
+				Show 68-points utilizing kalman filter
+				for (int i = 0; i < 68; i++) {
+				cv::circle(facefilter, cv::Point(0.1*shape.part(i).x() + 0.9*last_object[i].x, 0.1*shape.part(i).y() + 0.9*last_object[i].y), 2, cv::Scalar(255, 0, 0), -1);
+				}
+				imshow("facefilter", facefilter);*/
+				//----------------------------------------------------------------------------------------------------
 
 				eyesClosedLevel =
 					(
@@ -390,7 +409,6 @@ int main(int argc, char* argv[])
 
 						) / 2;
 
-
 				if (eyesClosedLevel < AlarmLevel)
 				{
 					alarmCount++;
@@ -398,11 +416,10 @@ int main(int argc, char* argv[])
 					{
 						alarmCount = 0;
 
-						pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档  
+						//pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档  
 
-						PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数  
+						//PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数  
 					}
-
 				}
 				else
 				{
@@ -415,8 +432,10 @@ int main(int argc, char* argv[])
 				cv::putText(img, PutString, cv::Point(15, 15),
 					FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
 
-			}
 
+				// Custom Face Render
+				render_face(img, shape);
+			}
 
 			//std::cout << "count:" << count << std::endl;
 			//Display it all on the screen  
@@ -450,8 +469,9 @@ int main(int argc, char* argv[])
 	}
 	system("pause");
 
-	Py_Finalize(); //释放python  
+	//Py_Finalize(); //释放python  
 
 	return 0;
 
 }
+
