@@ -13,7 +13,7 @@ using namespace dlib;
 using namespace std;
 using namespace cv;
 
-#define RATIO 1
+#define RATIO 5
 #define SKIP_FRAMES 20
 #define AlarmLevel 0.2
 #define AlarmCount 30
@@ -185,7 +185,7 @@ int main()
     //-----------------------------------------------------------------------------------------------
     try
     {
-        cv::VideoCapture cap(0);
+        cv::VideoCapture cap("12560005.mp4");
         //image_window win;
         //cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
         //cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
@@ -228,7 +228,7 @@ int main()
 
             cv::resize(img, img_small, cv::Size(), 1.0 / RATIO, 1.0 / RATIO);
 
-            cv_image<bgr_pixel> cimg(img);
+            cv_image<unsigned char> cimg(grayscale_image);
             cv_image<bgr_pixel> cimg_small(img_small);
             // Detect faces
             countframe++;
@@ -394,7 +394,7 @@ int main()
 
                     //cout << eyebox<<endl;
 
-                    Mat img_clone =grayscale_image.clone();
+                    Mat img_clone =img_adaptive.clone();
                     Rect2d  dstbox = eyebox;
 
                     bool dstbox_flag = 0;
@@ -545,3 +545,4 @@ int main()
     return 0;
 
 }
+
