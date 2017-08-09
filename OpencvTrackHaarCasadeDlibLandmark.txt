@@ -18,8 +18,8 @@ using namespace std;
 
 // Specifying minimum and maximum size parameters
 #define MIN_FACE_SIZE 100
-#define MAX_FACE_SIZE 300
-#define SKIPFRAME 10
+#define MAX_FACE_SIZE 800
+#define SKIPFRAME 5
 
 // Convert to string
 #define SSTR( x ) static_cast< std::Aostringstream & >( \
@@ -49,15 +49,15 @@ void render_face(cv::Mat &img, const dlib::full_object_detection& d)
         << "\n\t d.num_parts():  " << d.num_parts()
     );
 
-    draw_polyline(img, d, 0, 16);           // Jaw line
-    draw_polyline(img, d, 17, 21);          // Left eyebrow
-    draw_polyline(img, d, 22, 26);          // Right eyebrow
-    draw_polyline(img, d, 27, 30);          // Nose bridge
+    //draw_polyline(img, d, 0, 16);           // Jaw line
+    //draw_polyline(img, d, 17, 21);          // Left eyebrow
+    //draw_polyline(img, d, 22, 26);          // Right eyebrow
+    //draw_polyline(img, d, 27, 30);          // Nose bridge
     draw_polyline(img, d, 30, 35, true);    // Lower nose
     draw_polyline(img, d, 36, 41, true);    // Left eye
     draw_polyline(img, d, 42, 47, true);    // Right Eye
-    draw_polyline(img, d, 48, 59, true);    // Outer lip
-    draw_polyline(img, d, 60, 67, true);    // Inner lip
+    //draw_polyline(img, d, 48, 59, true);    // Outer lip
+    //draw_polyline(img, d, 60, 67, true);    // Inner lip
 
 }
 
@@ -85,10 +85,10 @@ int main(int argc, char **argv)
         CascadeClassifier faceCascade("cascade/haarcascade_frontalface_alt.xml");
 
         // Create a VideoCapture object
-        VideoCapture cap(0);
+        VideoCapture cap("12560005.mp4");
 
         // Check if camera opened successfully
-        if (!cap.open(0)) return 0;
+        if (!cap.open("12560005.mp4")) return 0;
 
         Mat frame, frameBig, frameGray;
         //-----------------------------------face detector end---------------------------------
@@ -118,7 +118,7 @@ int main(int argc, char **argv)
                 break;
 
             // Fixing the scaling factor
-            float scale = 640.0f / frameBig.cols;
+            float scale = 1024.0f / frameBig.cols;
 
             // Resizing the image
             resize(frameBig, frame, Size(), scale, scale);
@@ -140,7 +140,7 @@ int main(int argc, char **argv)
             if(contframe > SKIPFRAME)
                 contframe =0;
 
-            printf("contframe is :%d\n",contframe);
+            //printf("contframe is :%d\n",contframe);
 
             if(contframe == 0)
             {
@@ -152,12 +152,12 @@ int main(int argc, char **argv)
                     rectangle(frame, faceRect, Scalar(255, 0, 0), 2, 1);
 
                     bbox = faceRect;
-                    // Calculating the dimension parameters for eyes from the dimensions parameters of the face
-                    Rect eyesRect = Rect(faceRect.x + 0.125*faceRect.width, faceRect.y + 0.25 * faceRect.height, 0.75 * faceRect.width,
-                        0.25 * faceRect.height);
+//                    // Calculating the dimension parameters for eyes from the dimensions parameters of the face
+//                    Rect eyesRect = Rect(faceRect.x + 0.125*faceRect.width, faceRect.y + 0.25 * faceRect.height, 0.75 * faceRect.width,
+//                        0.25 * faceRect.height);
 
-                    // Drawing the bounding rectangle around the face
-                    rectangle(frame, eyesRect, Scalar(128, 255, 0), 2);
+//                    // Drawing the bounding rectangle around the face
+//                    rectangle(frame, eyesRect, Scalar(128, 255, 0), 2);
 
                     tracker = Tracker::create(trackerType);
                     tracker->init(frame, bbox);
@@ -172,12 +172,22 @@ int main(int argc, char **argv)
             // Update the tracking result
             bool ok = tracker->update(frame, bbox);
 
+
+            // Calculating the dimension parameters for eyes from the dimensions parameters of the face
+            Rect eyesRect = Rect( bbox.x + 0.125* bbox.width,  bbox.y + 0.25 *  bbox.height, 0.75 * bbox.width,
+                0.25 *  bbox.height);
+
+            // Drawing the bounding rectangle around the face
+            rectangle(frame, eyesRect, Scalar(255, 255, 0), 2);
+
             // Calculate Frames per second (FPS)
             float fps = getTickFrequency() / ((double)getTickCount() - timer);
 
 
             if (ok)
             {
+
+
                 // Tracking success : Draw the tracked object
                 rectangle(frame, bbox, Scalar(255, 0, 0), 2, 1);
                 facePostion.set_left(bbox.x);
