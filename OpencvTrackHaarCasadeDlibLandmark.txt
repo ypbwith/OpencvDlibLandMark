@@ -1,0 +1,230 @@
+#include <QCoreApplication>
+#include <opencv2/opencv.hpp>
+#include <opencv2/tracking.hpp>
+#include <opencv2/core/ocl.hpp>
+#include <dlib/opencv.h>
+#include <dlib/image_processing/frontal_face_detector.h>
+#include <dlib/image_processing/render_face_detections.h>
+#include <dlib/image_processing.h>
+#include <dlib/gui_widgets.h>
+#include <iostream>
+#include <math.h>
+#include <Python.h>
+#include <stddef.h>
+
+using namespace cv;
+using namespace std;
+
+
+// Specifying minimum and maximum size parameters
+#define MIN_FACE_SIZE 100
+#define MAX_FACE_SIZE 300
+#define SKIPFRAME 10
+
+// Convert to string
+#define SSTR( x ) static_cast< std::Aostringstream & >( \
+( std::ostringstream() << std::dec << x ) ).str()
+
+
+
+
+void draw_polyline(cv::Mat &img, const dlib::full_object_detection& d, const int start, const int end, bool isClosed = false)
+{
+    std::vector <cv::Point> points;
+    for (int i = start; i <= end; ++i)
+    {
+        points.push_back(cv::Point(d.part(i).x(), d.part(i).y()));
+    }
+
+    cv::polylines(img, points, isClosed, cv::Scalar(255, 0, 0), 1, 16);
+
+}
+
+void render_face(cv::Mat &img, const dlib::full_object_detection& d)
+{
+    DLIB_CASSERT
+    (
+        d.num_parts() == 68,
+        "\n\t Invalid inputs were given to this function. "
+        << "\n\t d.num_parts():  " << d.num_parts()
+    );
+
+    draw_polyline(img, d, 0, 16);           // Jaw line
+    draw_polyline(img, d, 17, 21);          // Left eyebrow
+    draw_polyline(img, d, 22, 26);          // Right eyebrow
+    draw_polyline(img, d, 27, 30);          // Nose bridge
+    draw_polyline(img, d, 30, 35, true);    // Lower nose
+    draw_polyline(img, d, 36, 41, true);    // Left eye
+    draw_polyline(img, d, 42, 47, true);    // Right Eye
+    draw_polyline(img, d, 48, 59, true);    // Outer lip
+    draw_polyline(img, d, 60, 67, true);    // Inner lip
+
+}
+
+
+int main(int argc, char **argv)
+{
+    QCoreApplication a(argc, argv);
+
+
+    std::vector<cv::Point2f> last_object;
+    for (int i = 0; i < 68; ++i) {
+        last_object.push_back(cv::Point2f(0.0, 0.0));
+    }
+
+
+    try
+    {
+        //---------------------------------shape pridector -----------------------------
+        dlib::shape_predictor pose_model;
+        dlib::deserialize("shape_predictor_68_face_landmarks.dat") >> pose_model;
+
+        dlib::rectangle facePostion(0, 0, 0, 0);
+        //-------------------------------------face detector-----------------------------
+        // Load the Cascade Classifier Xml file
+        CascadeClassifier faceCascade("cascade/haarcascade_frontalface_alt.xml");
+
+        // Create a VideoCapture object
+        VideoCapture cap(0);
+
+        // Check if camera opened successfully
+        if (!cap.open(0)) return 0;
+
+        Mat frame, frameBig, frameGray;
+        //-----------------------------------face detector end---------------------------------
+
+        //----------------------------------------tracker------------------------------------
+        // List of tracker types in OpenCV 3.2
+        // NOTE : GOTURN implementation is buggy and does not work.
+        const char *types[] = { "BOOSTING", "MIL", "KCF", "TLD","MEDIANFLOW", "GOTURN" };
+        std::vector <string> trackerTypes(types, std::end(types));
+
+        // Create a tracker
+        string trackerType = trackerTypes[2];
+        Ptr<Tracker> tracker = Tracker::create(trackerType);
+
+        // Define initial boundibg box
+        Rect2d bbox(10, 10,10, 10);
+
+        int contframe = 0;
+        //----------------------------tracker end------------------------------------------
+        while (1)
+        {
+            // Reading each frame
+            bool frameRead = cap.read(frameBig);
+
+            // If frame not opened successfully
+            if (!frameRead)
+                break;
+
+            // Fixing the scaling factor
+            float scale = 640.0f / frameBig.cols;
+
+            // Resizing the image
+            resize(frameBig, frame, Size(), scale, scale);
+
+            dlib::cv_image<dlib::bgr_pixel> cimg(frame);
+
+            // Converting to grayscale
+            cvtColor(frame, frameGray, COLOR_BGR2GRAY);
+
+
+
+            // Creating vector to store the detected faces' parameters
+            vector<Rect> faces;
+
+            // Detect faces
+            faceCascade.detectMultiScale(frameGray, faces, 1.1, 5, 0, Size(MIN_FACE_SIZE, MIN_FACE_SIZE), Size(MAX_FACE_SIZE, MAX_FACE_SIZE));
+
+            contframe++;
+            if(contframe > SKIPFRAME)
+                contframe =0;
+
+            printf("contframe is :%d\n",contframe);
+
+            if(contframe == 0)
+            {
+                // Loop over each detected face
+                for (int i = 0; i < faces.size(); i++)
+                {
+                    // Dimension parameters for bounding rectangle for face
+                    Rect faceRect = faces[i];
+                    rectangle(frame, faceRect, Scalar(255, 0, 0), 2, 1);
+
+                    bbox = faceRect;
+                    // Calculating the dimension parameters for eyes from the dimensions parameters of the face
+                    Rect eyesRect = Rect(faceRect.x + 0.125*faceRect.width, faceRect.y + 0.25 * faceRect.height, 0.75 * faceRect.width,
+                        0.25 * faceRect.height);
+
+                    // Drawing the bounding rectangle around the face
+                    rectangle(frame, eyesRect, Scalar(128, 255, 0), 2);
+
+                    tracker = Tracker::create(trackerType);
+                    tracker->init(frame, bbox);
+                    bool ok = tracker->update(frame, bbox);
+                }
+            }
+
+
+            // Start timer
+            double timer = (double)getTickCount();
+
+            // Update the tracking result
+            bool ok = tracker->update(frame, bbox);
+
+            // Calculate Frames per second (FPS)
+            float fps = getTickFrequency() / ((double)getTickCount() - timer);
+
+
+            if (ok)
+            {
+                // Tracking success : Draw the tracked object
+                rectangle(frame, bbox, Scalar(255, 0, 0), 2, 1);
+                facePostion.set_left(bbox.x);
+                facePostion.set_top(bbox.y);
+                facePostion.set_right(bbox.x + bbox.width);
+                facePostion.set_bottom(bbox.y + bbox.height);
+
+                // Landmark detection on full sized image
+                dlib::full_object_detection shape = pose_model(cimg, facePostion);
+                render_face(frame, shape);
+
+//                facebox.y = r.top();
+//                facebox.width = r.right() - facebox.x;
+//                facebox.height = r.bottom() - facebox.y;
+//                cv::rectangle(img, facebox, Scalar(255, 0, 0), 2, 1);
+
+            }
+            else
+            {
+                // Tracking failure detected.
+                putText(frame, "Tracking failure detected", Point(100, 80), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(0, 0, 255), 2);
+            }
+
+            // Display tracker type on frame
+            putText(frame, trackerType + " Tracker", Point(100, 20), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50, 170, 50), 2);
+
+            char PutString[20];
+            sprintf(PutString, "FPS :%f\n", fps);
+            // Display FPS on frame
+            putText(frame, PutString, Point(100, 50), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50, 170, 50));
+
+            // Display frame.
+            imshow("Tracking", frame);
+
+            // Exit if ESC pressed.
+            int k = waitKey(1);
+            if (k == 27)
+            {
+                break;
+            }
+        }
+    }
+    catch (exception& e)
+    {
+        cout << e.what() << endl;
+    }
+    system("pause");
+
+    return a.exec();
+}
