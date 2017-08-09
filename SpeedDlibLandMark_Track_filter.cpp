@@ -446,10 +446,10 @@ int main()
 
                         dstbox_flag == 0;
 
-                        resize(eye_left,eye_left_24x24,Size(24,24),0,0,CV_INTER_LINEAR);
+                        resize(eye_left,eye_left_24x24,Size(64,64),0,0,CV_INTER_LINEAR);
                         char im_str[sizeof("eye_close/im%06d.jpg")];
                         sprintf(im_str,"eye_close/im%06d.jpg", im_mum);
-                        imwrite(im_str,eye_left_24x24); //c版本中的保存图片为cvSaveImage()函数，c++版本中直接与matlab的相似，imwrite()函数。
+                        //imwrite(im_str,eye_left_24x24); //c版本中的保存图片为cvSaveImage()函数，c++版本中直接与matlab的相似，imwrite()函数。
                         imshow( "face", eye_left_24x24 );
                     }
 
