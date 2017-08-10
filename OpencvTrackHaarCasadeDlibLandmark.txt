@@ -11,7 +11,12 @@
 #include <math.h>
 #include <Python.h>
 #include <stddef.h>
+#include <QtCharts/QChartView>
+#include <QChartView>
+#include <QLineSeries>
+#include <QtCharts>
 
+QT_CHARTS_USE_NAMESPACE
 using namespace cv;
 using namespace std;
 
@@ -20,7 +25,7 @@ using namespace std;
 #define MIN_FACE_SIZE 100
 #define MAX_FACE_SIZE 800
 #define SKIPFRAME 20
-
+#define RATIO 3
 #define AlarmLevel 0.2
 #define AlarmCount 30
 int alarmCount = 0;
@@ -85,8 +90,43 @@ void render_face(cv::Mat &img, const dlib::full_object_detection& d)
 
 int main(int argc, char **argv)
 {
-    QCoreApplication a(argc, argv);
+    //QCoreApplication a(argc, argv);
+    QApplication a(argc, argv);
+    double lineshow[100];
+    //构建 series，作为图表的数据源，为其添加 6 个坐标点
+    QLineSeries *series = new QLineSeries();
 
+
+    // 构建图表
+    QChart *chart = new QChart();
+    chart->legend()->hide();  // 隐藏图例
+    chart->addSeries(series);  // 将 series 添加至图表中
+    chart->createDefaultAxes();  // 基于已添加到图表的 series 来创轴
+    chart->setTitle("Simple line chart");  // 设置图表的标题
+
+    QValueAxis *axisX = new QValueAxis; //定义X轴
+     axisX->setRange(0, 10); //设置范围
+     axisX->setLabelFormat("%g"); //设置刻度的格式
+     axisX->setTitleText("X Axis"); //设置X轴的标题
+     axisX->setGridLineVisible(true); //设置是否显示网格线
+     axisX->setMinorTickCount(4); //设置小刻度线的数目
+    // axisX->setLabelsVisible(false); //设置刻度是否显示
+
+     QValueAxis *axisY = new QValueAxis;
+     axisY->setRange(0, 0.5);
+     axisY->setTitleText("Y Axis");
+     axisY->setLabelFormat("%.2f");
+     axisY->setGridLineVisible(true);
+
+     chart->setAxisX(axisX, series);
+     chart->setAxisY(axisY, series);
+
+    // 构建 QChartView，并设置抗锯齿、标题、大小
+    QChartView *chartView = new QChartView(chart);
+    chartView->setRenderHint(QPainter::Antialiasing);
+    chartView->setWindowTitle("Simple line chart");
+    chartView->resize(500, 300);
+    chartView->show();
 
     std::vector<cv::Point2f> last_object;
     for (int i = 0; i < 68; ++i) {
@@ -105,10 +145,10 @@ int main(int argc, char **argv)
         CascadeClassifier faceCascade("cascade/haarcascade_frontalface_alt.xml");
 
         // Create a VideoCapture object
-        VideoCapture cap(0);
+        VideoCapture cap("12560005.mp4");
 
         // Check if camera opened successfully
-        if (!cap.open(0)) return 0;
+        if (!cap.open("12560005.mp4")) return 0;
 
         Mat frame, frameBig, frameGray;
         //-----------------------------------face detector end---------------------------------
@@ -139,23 +179,24 @@ int main(int argc, char **argv)
                 break;
 
             // Fixing the scaling factor
-            float scale = 640.0f / frameBig.cols;
+            float scale = 1024.0f / frameBig.cols;
 
             // Resizing the image
-            resize(frameBig, frame, Size(), scale, scale);
+            //resize(frameBig, frame, Size(), scale, scale);
+            cv::resize(frameBig, frame, cv::Size(), 1.0 / RATIO, 1.0 / RATIO);
 
             Mat grayscale_image, img_adaptive;
            cvtColor(frame, grayscale_image, CV_BGR2GRAY);
 
-           int block_size = 25;
-           double offset = 5;
+           int block_size = 15;
+           double offset = 15;
            int threadshould_type = CV_THRESH_BINARY;
            int adaptive_method = CV_ADAPTIVE_THRESH_GAUSSIAN_C;
            adaptiveThreshold(grayscale_image, img_adaptive, 255, adaptive_method, threadshould_type, block_size, offset);
-           imshow("facefilter", img_adaptive);
+           //imshow("facefilter", img_adaptive);
 
             dlib::cv_image<dlib::bgr_pixel> cimg(frame);
-
+            dlib::cv_image<dlib::bgr_pixel> cframeBig(frameBig);
             // Converting to grayscale
             cvtColor(frame, frameGray, COLOR_BGR2GRAY);
 
@@ -226,9 +267,16 @@ int main(int argc, char **argv)
                 facePostion.set_right(bbox.x + bbox.width);
                 facePostion.set_bottom(bbox.y + bbox.height);
 
+                dlib::rectangle r(
+                                   (long)(facePostion.left() * RATIO),
+                                   (long)(facePostion.top() * RATIO),
+                                   (long)(facePostion.right() * RATIO),
+                                   (long)(facePostion.bottom() * RATIO)
+                               );
+
                 // Landmark detection on full sized image
                 std::vector<dlib::full_object_detection> shapes;
-                dlib::full_object_detection shape = pose_model(cimg, facePostion);
+                dlib::full_object_detection shape = pose_model(cframeBig, r);
                 shapes.push_back(shape);
 
                const dlib::full_object_detection & d = shapes[0];
@@ -339,6 +387,7 @@ int main(int argc, char **argv)
             }
 
 
+
             //----------------------------------------------------------------------------------------------------
 
            eyesClosedLevel =
@@ -356,6 +405,22 @@ int main(int argc, char **argv)
                    / (2 * sqrt(pow(eyePoint.rightEye.x[0] - eyePoint.rightEye.x[3], 2) + pow(eyePoint.rightEye.y[0] - eyePoint.rightEye.y[3], 2)))
 
                    ) / 2;
+
+             series->clear();
+             lineshow[0] = eyesClosedLevel;
+             for (int i=99;i>=0;i--)
+             {
+                  lineshow[i+1] = lineshow[i];
+             }
+
+             for(double x=0;x<9;x+=0.1)
+             {
+                 //printf("%f",lineshow[int(x*10)]);
+                 series->append(x,lineshow[int(x*10)]);
+             }
+
+           chartView->show();
+
 
            if (eyesClosedLevel < AlarmLevel)
            {
@@ -411,3 +476,4 @@ int main(int argc, char **argv)
 
     return a.exec();
 }
+
