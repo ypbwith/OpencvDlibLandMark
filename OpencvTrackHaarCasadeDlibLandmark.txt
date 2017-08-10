@@ -19,13 +19,34 @@ using namespace std;
 // Specifying minimum and maximum size parameters
 #define MIN_FACE_SIZE 100
 #define MAX_FACE_SIZE 800
-#define SKIPFRAME 5
+#define SKIPFRAME 20
 
-// Convert to string
-#define SSTR( x ) static_cast< std::Aostringstream & >( \
-( std::ostringstream() << std::dec << x ) ).str()
+#define AlarmLevel 0.2
+#define AlarmCount 30
+int alarmCount = 0;
+double eyesClosedLevel;
 
+struct leftEyePoint
+{
+    double x[6];
+    double y[6];
+};
 
+struct rightEyePoint
+{
+    double x[6];
+    double y[6];
+};
+
+struct eyeKeyPoint
+{
+    leftEyePoint leftEye;
+
+    rightEyePoint rightEye;
+
+};
+
+eyeKeyPoint eyePoint;
 
 
 void draw_polyline(cv::Mat &img, const dlib::full_object_detection& d, const int start, const int end, bool isClosed = false)
@@ -53,7 +74,7 @@ void render_face(cv::Mat &img, const dlib::full_object_detection& d)
     //draw_polyline(img, d, 17, 21);          // Left eyebrow
     //draw_polyline(img, d, 22, 26);          // Right eyebrow
     //draw_polyline(img, d, 27, 30);          // Nose bridge
-    draw_polyline(img, d, 30, 35, true);    // Lower nose
+    //draw_polyline(img, d, 30, 35, true);    // Lower nose
     draw_polyline(img, d, 36, 41, true);    // Left eye
     draw_polyline(img, d, 42, 47, true);    // Right Eye
     //draw_polyline(img, d, 48, 59, true);    // Outer lip
@@ -72,7 +93,6 @@ int main(int argc, char **argv)
         last_object.push_back(cv::Point2f(0.0, 0.0));
     }
 
-
     try
     {
         //---------------------------------shape pridector -----------------------------
@@ -85,10 +105,10 @@ int main(int argc, char **argv)
         CascadeClassifier faceCascade("cascade/haarcascade_frontalface_alt.xml");
 
         // Create a VideoCapture object
-        VideoCapture cap("12560005.mp4");
+        VideoCapture cap(0);
 
         // Check if camera opened successfully
-        if (!cap.open("12560005.mp4")) return 0;
+        if (!cap.open(0)) return 0;
 
         Mat frame, frameBig, frameGray;
         //-----------------------------------face detector end---------------------------------
@@ -108,6 +128,7 @@ int main(int argc, char **argv)
 
         int contframe = 0;
         //----------------------------tracker end------------------------------------------
+        unsigned long im_mum=0;
         while (1)
         {
             // Reading each frame
@@ -118,10 +139,20 @@ int main(int argc, char **argv)
                 break;
 
             // Fixing the scaling factor
-            float scale = 1024.0f / frameBig.cols;
+            float scale = 640.0f / frameBig.cols;
 
             // Resizing the image
             resize(frameBig, frame, Size(), scale, scale);
+
+            Mat grayscale_image, img_adaptive;
+           cvtColor(frame, grayscale_image, CV_BGR2GRAY);
+
+           int block_size = 25;
+           double offset = 5;
+           int threadshould_type = CV_THRESH_BINARY;
+           int adaptive_method = CV_ADAPTIVE_THRESH_GAUSSIAN_C;
+           adaptiveThreshold(grayscale_image, img_adaptive, 255, adaptive_method, threadshould_type, block_size, offset);
+           imshow("facefilter", img_adaptive);
 
             dlib::cv_image<dlib::bgr_pixel> cimg(frame);
 
@@ -196,8 +227,104 @@ int main(int argc, char **argv)
                 facePostion.set_bottom(bbox.y + bbox.height);
 
                 // Landmark detection on full sized image
+                std::vector<dlib::full_object_detection> shapes;
                 dlib::full_object_detection shape = pose_model(cimg, facePostion);
-                render_face(frame, shape);
+                shapes.push_back(shape);
+
+               const dlib::full_object_detection & d = shapes[0];
+
+               for (int i = 0; i < d.num_parts(); i++)
+               {
+                   last_object[i].x = d.part(i).x();
+                   last_object[i].y = d.part(i).y();
+               }
+
+               Rect2d eyebox ;
+               eyebox.width = abs (d.part(36).x() - d.part(39).x() );
+               eyebox.height = eyebox.width;
+               eyebox.x = d.part(36).x();
+               eyebox.y = abs(d.part(36).y() - 0.5 * eyebox.width);
+
+               //cout << eyebox<<endl;
+
+               Mat img_clone =img_adaptive.clone();
+               Rect2d  dstbox = eyesRect;
+
+               bool dstbox_flag = 0;
+
+               if(dstbox.x + dstbox.width<= 0)
+               {
+                   dstbox_flag =1;
+               }
+               else if (dstbox.x<=0)
+               {
+
+                   dstbox.width = dstbox.width + dstbox.x;
+
+                   dstbox.x=0;
+               }
+
+               if(dstbox.y + dstbox.height<= 0)
+               {
+                   dstbox_flag =1;
+
+               }
+               else if (dstbox.y<=0)
+               {
+                   dstbox.height = dstbox.height + dstbox.y;
+                   dstbox.y=0;
+               }
+
+               if(dstbox.x>img_clone.size().width)
+               {
+                  dstbox_flag =1;
+               }
+               else if( dstbox.x + dstbox.width>img_clone.size().width)
+               {
+                   dstbox.width = img_clone.size().width - dstbox.x;
+               }
+
+               if(dstbox.y + dstbox.height >img_clone.size().height)
+               {
+                   dstbox_flag =1;
+               }
+               else if( dstbox.y + dstbox.height >img_clone.size().height)
+               {
+                    dstbox.height = img_clone.size().width - dstbox.y;
+               }
+               if(dstbox_flag == 0)
+               {
+                   cv::Mat eye_left (img_clone,dstbox );
+                   cv::Mat eye_left_24x24;
+
+                   dstbox_flag == 0;
+
+                   //resize(eye_left,eye_left_24x24,Size(64,64),0,0,CV_INTER_LINEAR);
+                   char im_str[sizeof("eye_close/im%06d.jpg")];
+                   sprintf(im_str,"eye_close/im%06d.jpg", im_mum);
+                   //imwrite(im_str,eye_left_24x24); //c版本中的保存图片为cvSaveImage()函数，c++版本中直接与matlab的相似，imwrite()函数。
+                   imshow( "face", eye_left );
+               }
+
+              render_face(frame, shape);
+
+              for (int i = 36; i <= 41; i++)
+              {
+
+                  eyePoint.leftEye.x[i - 36] = 0.01*shape.part(i).x() + 0.99*last_object[i].x;//predict_points[i].x;
+                  eyePoint.leftEye.y[i - 36] = 0.01*shape.part(i).y() + 0.99*last_object[i].y;//predict_points[i].y;
+
+                  //cv::circle(facefilter, cv::Point(eyePoint.leftEye.x[i - 36], eyePoint.leftEye.y[i - 36]), 2, cv::Scalar(255, 0, 0), -1);
+              }
+
+              for (int i = 42; i <= 47; i++)
+              {
+
+                  eyePoint.rightEye.x[i - 42] = 0.01*shape.part(i).x() + 0.99*last_object[i].x;//predict_points[i].x;
+                  eyePoint.rightEye.y[i - 42] = 0.01*shape.part(i).y() + 0.99*last_object[i].y;//predict_points[i].y;
+
+                  //cv::circle(facefilter, cv::Point(eyePoint.rightEye.x[i - 42], eyePoint.rightEye.y[i - 42]), 2, cv::Scalar(255, 0, 0), -1);
+              }
 
 //                facebox.y = r.top();
 //                facebox.width = r.right() - facebox.x;
@@ -211,13 +338,59 @@ int main(int argc, char **argv)
                 putText(frame, "Tracking failure detected", Point(100, 80), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(0, 0, 255), 2);
             }
 
-            // Display tracker type on frame
-            putText(frame, trackerType + " Tracker", Point(100, 20), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50, 170, 50), 2);
 
-            char PutString[20];
-            sprintf(PutString, "FPS :%f\n", fps);
+            //----------------------------------------------------------------------------------------------------
+
+           eyesClosedLevel =
+               (
+               (sqrt(pow(eyePoint.leftEye.x[1] - eyePoint.leftEye.x[5], 2) + pow(eyePoint.leftEye.y[1] - eyePoint.leftEye.y[5], 2)) +
+                   sqrt(pow(eyePoint.leftEye.x[2] - eyePoint.leftEye.x[4], 2) + pow(eyePoint.leftEye.y[2] - eyePoint.leftEye.y[4], 2))
+                   )
+                   / (2 * sqrt(pow(eyePoint.leftEye.x[0] - eyePoint.leftEye.x[3], 2) + pow(eyePoint.leftEye.y[0] - eyePoint.leftEye.y[3], 2)))
+
+                   +
+
+                   (sqrt(pow(eyePoint.rightEye.x[1] - eyePoint.rightEye.x[5], 2) + pow(eyePoint.rightEye.y[1] - eyePoint.rightEye.y[5], 2)) +
+                       sqrt(pow(eyePoint.rightEye.x[2] - eyePoint.rightEye.x[4], 2) + pow(eyePoint.rightEye.y[2] - eyePoint.rightEye.y[4], 2))
+                       )
+                   / (2 * sqrt(pow(eyePoint.rightEye.x[0] - eyePoint.rightEye.x[3], 2) + pow(eyePoint.rightEye.y[0] - eyePoint.rightEye.y[3], 2)))
+
+                   ) / 2;
+
+           if (eyesClosedLevel < AlarmLevel)
+           {
+               alarmCount++;
+               if (alarmCount > AlarmCount)
+               {
+                   alarmCount = 0;
+
+                   //pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档
+
+                   //PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数
+               }
+           }
+           else
+           {
+               alarmCount = 0;
+           }
+
+           char PutString[20];
+           sprintf(PutString, "eyeCloseLevel:%f\n", eyesClosedLevel);
+           //printf(PutString);
+           cv::putText(frame, PutString, cv::Point(250, 20),
+               FONT_HERSHEY_SIMPLEX, 0.75, cv::Scalar(0, 0, 0), 2);
+
+
+
+            // Display tracker type on frame
+            putText(frame, trackerType + " Tracker", Point(100, 20),
+                    FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50, 170, 50), 2);
+
+
+            sprintf(PutString, "FPS :%lf\n", fps);
             // Display FPS on frame
-            putText(frame, PutString, Point(100, 50), FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50, 170, 50));
+            putText(frame, PutString, Point(100, 50),
+                    FONT_HERSHEY_SIMPLEX, 0.75, Scalar(50, 170, 50));
 
             // Display frame.
             imshow("Tracking", frame);
