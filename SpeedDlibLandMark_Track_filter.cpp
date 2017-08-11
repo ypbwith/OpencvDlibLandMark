@@ -258,7 +258,7 @@ int main(int argc, char **argv)
 //        double offset = 10;
 //        int threadshould_type = CV_THRESH_BINARY;
 //        int adaptive_method = CV_ADAPTIVE_THRESH_GAUSSIAN_C;
-
+        double eyesClosedLevel_filter[100];
         while (1)
         {
             cap >> img;
@@ -526,6 +526,17 @@ int main(int argc, char **argv)
                         / (2 * sqrt(pow(eyePoint.rightEye.x[0] - eyePoint.rightEye.x[3], 2) + pow(eyePoint.rightEye.y[0] - eyePoint.rightEye.y[3], 2)))
 
                         ) / 2;
+
+                 eyesClosedLevel_filter[0] = eyesClosedLevel ;
+                 for (int i=14;i>=0;i--)
+                 {
+                     eyesClosedLevel += eyesClosedLevel_filter[i];
+
+                     eyesClosedLevel_filter[i+1] = eyesClosedLevel_filter[i];
+
+                 }
+
+                 eyesClosedLevel =  eyesClosedLevel/15.0;
 
                 series->clear();
                 lineshow[0] = eyesClosedLevel;
