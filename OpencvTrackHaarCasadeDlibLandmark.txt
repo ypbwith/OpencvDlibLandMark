@@ -24,8 +24,8 @@ using namespace std;
 // Specifying minimum and maximum size parameters
 #define MIN_FACE_SIZE 100
 #define MAX_FACE_SIZE 800
-#define SKIPFRAME 20
-#define RATIO 3
+#define SKIPFRAME 5
+#define RATIO 1
 #define AlarmLevel 0.2
 #define AlarmCount 30
 int alarmCount = 0;
@@ -145,13 +145,13 @@ int main(int argc, char **argv)
         CascadeClassifier faceCascade("cascade/haarcascade_frontalface_alt.xml");
 
         // Create a VideoCapture object
-        VideoCapture cap("12560005.mp4");
+        VideoCapture cap(0);
 
         // Check if camera opened successfully
-        if (!cap.open("12560005.mp4")) return 0;
+        if (!cap.open(0)) return 0;
 
         Mat frame, frameBig, frameGray;
-        //-----------------------------------face detector end---------------------------------
+        //-----------------------------------face detector end------------------------------
 
         //----------------------------------------tracker------------------------------------
         // List of tracker types in OpenCV 3.2
@@ -169,6 +169,16 @@ int main(int argc, char **argv)
         int contframe = 0;
         //----------------------------tracker end------------------------------------------
         unsigned long im_mum=0;
+
+        Mat grayscale_image, img_adaptive,img_EqualizeHist;
+
+        int block_size = 25;
+        double offset = 18;
+        int threadshould_type = CV_THRESH_BINARY;
+        int adaptive_method = CV_ADAPTIVE_THRESH_GAUSSIAN_C;
+
+        // Creating vector to store the detected faces' parameters
+        vector<Rect> faces;
         while (1)
         {
             // Reading each frame
@@ -179,34 +189,26 @@ int main(int argc, char **argv)
                 break;
 
             // Fixing the scaling factor
-            float scale = 1024.0f / frameBig.cols;
+            //float scale = 1024.0f / frameBig.cols;
 
             // Resizing the image
             //resize(frameBig, frame, Size(), scale, scale);
             cv::resize(frameBig, frame, cv::Size(), 1.0 / RATIO, 1.0 / RATIO);
 
-            Mat grayscale_image, img_adaptive;
-           cvtColor(frame, grayscale_image, CV_BGR2GRAY);
 
-           int block_size = 15;
-           double offset = 15;
-           int threadshould_type = CV_THRESH_BINARY;
-           int adaptive_method = CV_ADAPTIVE_THRESH_GAUSSIAN_C;
-           adaptiveThreshold(grayscale_image, img_adaptive, 255, adaptive_method, threadshould_type, block_size, offset);
-           //imshow("facefilter", img_adaptive);
+            cvtColor(frame, grayscale_image, CV_BGR2GRAY);
 
-            dlib::cv_image<dlib::bgr_pixel> cimg(frame);
-            dlib::cv_image<dlib::bgr_pixel> cframeBig(frameBig);
-            // Converting to grayscale
-            cvtColor(frame, frameGray, COLOR_BGR2GRAY);
+            equalizeHist(grayscale_image,img_EqualizeHist);
 
+            adaptiveThreshold(img_EqualizeHist, img_adaptive, 255, adaptive_method, threadshould_type, block_size, offset);
+            imshow("facefilter", img_EqualizeHist);
 
-
-            // Creating vector to store the detected faces' parameters
-            vector<Rect> faces;
+            //dlib::cv_image<dlib::bgr_pixel> cimg(img_EqualizeHist);
+            dlib::cv_image<unsigned char> cimg(img_EqualizeHist);
+            dlib::cv_image<unsigned char> cframeBig(img_EqualizeHist);            
 
             // Detect faces
-            faceCascade.detectMultiScale(frameGray, faces, 1.1, 5, 0, Size(MIN_FACE_SIZE, MIN_FACE_SIZE), Size(MAX_FACE_SIZE, MAX_FACE_SIZE));
+            faceCascade.detectMultiScale(img_EqualizeHist, faces, 1.1, 5, 0, Size(MIN_FACE_SIZE, MIN_FACE_SIZE), Size(MAX_FACE_SIZE, MAX_FACE_SIZE));
 
             contframe++;
             if(contframe > SKIPFRAME)
@@ -413,7 +415,7 @@ int main(int argc, char **argv)
                   lineshow[i+1] = lineshow[i];
              }
 
-             for(double x=0;x<9;x+=0.1)
+             for(double x=0;x<10;x+=0.1)
              {
                  //printf("%f",lineshow[int(x*10)]);
                  series->append(x,lineshow[int(x*10)]);
@@ -476,4 +478,3 @@ int main(int argc, char **argv)
 
     return a.exec();
 }
-
