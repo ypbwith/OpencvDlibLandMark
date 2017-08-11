@@ -8,13 +8,17 @@
 #include <iostream>
 #include "Python.h"
 #include <math.h>
+#include <QtCharts/QChartView>
+#include <QChartView>
+#include <QLineSeries>
+#include <QtCharts>
 
 using namespace dlib;
 using namespace std;
 using namespace cv;
 
-#define RATIO 5
-#define SKIP_FRAMES 20
+#define RATIO 1
+#define SKIP_FRAMES 10
 #define AlarmLevel 0.2
 #define AlarmCount 30
 int alarmCount = 0;
@@ -84,8 +88,46 @@ void ZeroRect(dlib::rectangle &rect)
     rect.set_right(0);
 }
 
-int main()
+int main(int argc, char **argv)
 {
+  QApplication a(argc, argv);
+
+    double lineshow[100];
+   //构建 series，作为图表的数据源，为其添加 6 个坐标点
+   QLineSeries *series = new QLineSeries();
+
+
+   // 构建图表
+   QChart *chart = new QChart();
+   chart->legend()->hide();  // 隐藏图例
+   chart->addSeries(series);  // 将 series 添加至图表中
+   chart->createDefaultAxes();  // 基于已添加到图表的 series 来创轴
+   chart->setTitle("Simple line chart");  // 设置图表的标题
+
+   QValueAxis *axisX = new QValueAxis; //定义X轴
+    axisX->setRange(0, 10); //设置范围
+    axisX->setLabelFormat("%g"); //设置刻度的格式
+    axisX->setTitleText("X Axis"); //设置X轴的标题
+    axisX->setGridLineVisible(true); //设置是否显示网格线
+    axisX->setMinorTickCount(4); //设置小刻度线的数目
+   // axisX->setLabelsVisible(false); //设置刻度是否显示
+
+    QValueAxis *axisY = new QValueAxis;
+    axisY->setRange(0, 0.5);
+    axisY->setTitleText("Y Axis");
+    axisY->setLabelFormat("%.2f");
+    axisY->setGridLineVisible(true);
+
+    chart->setAxisX(axisX, series);
+    chart->setAxisY(axisY, series);
+
+   // 构建 QChartView，并设置抗锯齿、标题、大小
+   QChartView *chartView = new QChartView(chart);
+   chartView->setRenderHint(QPainter::Antialiasing);
+   chartView->setWindowTitle("Simple line chart");
+   chartView->resize(500, 300);
+   chartView->show();
+
     //Py_Initialize();//初始化python
 
     //				// 检查初始化是否成功
@@ -185,7 +227,7 @@ int main()
     //-----------------------------------------------------------------------------------------------
     try
     {
-        cv::VideoCapture cap("12560005.mp4");
+        cv::VideoCapture cap(0);
         //image_window win;
         //cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
         //cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
@@ -211,25 +253,31 @@ int main()
         dlib::rectangle facePostion(0, 0, 0, 0);
 
         unsigned long im_mum=0;
+        Mat grayscale_image, img_adaptive,img_EqualizeHist;
+//        int block_size = 25;
+//        double offset = 10;
+//        int threadshould_type = CV_THRESH_BINARY;
+//        int adaptive_method = CV_ADAPTIVE_THRESH_GAUSSIAN_C;
 
         while (1)
         {
             cap >> img;
 
-            Mat grayscale_image, img_adaptive;
             cvtColor(img, grayscale_image, CV_BGR2GRAY);
 
-            int block_size = 25;
-            double offset = 5;
-            int threadshould_type = CV_THRESH_BINARY;
-            int adaptive_method = CV_ADAPTIVE_THRESH_GAUSSIAN_C;
-            adaptiveThreshold(grayscale_image, img_adaptive, 255, adaptive_method, threadshould_type, block_size, offset);
-            imshow("facefilter", img_adaptive);
+            //equalizeHist(grayscale_image,img_EqualizeHist);
 
-            cv::resize(img, img_small, cv::Size(), 1.0 / RATIO, 1.0 / RATIO);
+            //adaptiveThreshold(grayscale_image, img_adaptive, 255, adaptive_method, threadshould_type, block_size, offset);
 
-            cv_image<unsigned char> cimg(grayscale_image);
-            cv_image<bgr_pixel> cimg_small(img_small);
+
+//            Mat kernel = (Mat_<float>(3, 3) << 0, -1, 0, 0, 5, 0, 0, -1, 0);
+//            filter2D(img_EqualizeHist, img_adaptive, CV_8UC3, kernel);
+            //imshow("facefilter",img_adaptive);
+
+            //cv::resize(img, img_small, cv::Size(), 1.0 / RATIO, 1.0 / RATIO);
+
+            cv_image<dlib::bgr_pixel> cimg(img);
+            cv_image<dlib::bgr_pixel> cimg_small(img);
             // Detect faces
             countframe++;
             /*if (countframe == SKIP_FRAMES)
@@ -274,7 +322,6 @@ int main()
             {
                 // Find the pose of each face.
                 std::vector<full_object_detection> shapes;
-
 
 
                 dlib::rectangle r(
@@ -355,8 +402,8 @@ int main()
                 for (int i = 36; i <= 41; i++)
                 {
 
-                    eyePoint.leftEye.x[i - 36] = 0.01*shape.part(i).x() + 0.99*last_object[i].x;//predict_points[i].x;
-                    eyePoint.leftEye.y[i - 36] = 0.01*shape.part(i).y() + 0.99*last_object[i].y;//predict_points[i].y;
+                    eyePoint.leftEye.x[i - 36] =shape.part(i).x() ; //0.9*shape.part(i).x() + 0.1*last_object[i].x;//predict_points[i].x;
+                    eyePoint.leftEye.y[i - 36] =shape.part(i).y() ;//0.9*shape.part(i).y() + 0.1*last_object[i].y;//predict_points[i].y;
 
                     //cv::circle(facefilter, cv::Point(eyePoint.leftEye.x[i - 36], eyePoint.leftEye.y[i - 36]), 2, cv::Scalar(255, 0, 0), -1);
                 }
@@ -364,8 +411,8 @@ int main()
                 for (int i = 42; i <= 47; i++)
                 {
 
-                    eyePoint.rightEye.x[i - 42] = 0.01*shape.part(i).x() + 0.99*last_object[i].x;//predict_points[i].x;
-                    eyePoint.rightEye.y[i - 42] = 0.01*shape.part(i).y() + 0.99*last_object[i].y;//predict_points[i].y;
+                    eyePoint.rightEye.x[i - 42] = shape.part(i).x();//0.9*shape.part(i).x() + 0.1*last_object[i].x;//predict_points[i].x;
+                    eyePoint.rightEye.y[i - 42] = shape.part(i).y();//0.9*shape.part(i).y() + 0.1*last_object[i].y;//predict_points[i].y;
 
                     //cv::circle(facefilter, cv::Point(eyePoint.rightEye.x[i - 42], eyePoint.rightEye.y[i - 42]), 2, cv::Scalar(255, 0, 0), -1);
                 }
@@ -394,7 +441,7 @@ int main()
 
                     //cout << eyebox<<endl;
 
-                    Mat img_clone =img_adaptive.clone();
+                    Mat img_clone =grayscale_image.clone();
                     Rect2d  dstbox = eyebox;
 
                     bool dstbox_flag = 0;
@@ -480,6 +527,21 @@ int main()
 
                         ) / 2;
 
+                series->clear();
+                lineshow[0] = eyesClosedLevel;
+                for (int i=99;i>=0;i--)
+                {
+                     lineshow[i+1] = lineshow[i];
+                }
+
+                for(double x=0;x<10;x+=0.1)
+                {
+                    //printf("%f",lineshow[int(x*10)]);
+                    series->append(x,lineshow[int(x*10)]);
+                }
+
+              chartView->show();
+
                 if (eyesClosedLevel < AlarmLevel)
                 {
                     alarmCount++;
@@ -542,7 +604,7 @@ int main()
 
     //Py_Finalize(); //释放python
 
-    return 0;
+   return a.exec();
 
 }
 
