@@ -12,15 +12,16 @@
 #include <QChartView>
 #include <QLineSeries>
 #include <QtCharts>
+#include <playsound.h>
 
 using namespace dlib;
 using namespace std;
 using namespace cv;
 
 #define RATIO 1
-#define SKIP_FRAMES 10
-#define AlarmLevel 0.2
-#define AlarmCount 30
+#define SKIP_FRAMES 3
+#define AlarmLevel 0.18
+#define AlarmCount 5
 int alarmCount = 0;
 double eyesClosedLevel;
 
@@ -91,6 +92,14 @@ void ZeroRect(dlib::rectangle &rect)
 int main(int argc, char **argv)
 {
   QApplication a(argc, argv);
+
+
+  playsound sound;
+
+     sound.start();
+     sound.soundName = new char[20];
+     strcpy(sound.soundName,"alarm.wav");
+     //sound.exit(0);
 
     double lineshow[100];
    //构建 series，作为图表的数据源，为其添加 6 个坐标点
@@ -297,7 +306,7 @@ int main(int argc, char **argv)
                     facebox_RATIO.height = faces.at(0).bottom() - facebox_RATIO.y;
 
                     tracker.start_track(cimg_small, centered_rect(point(facebox_RATIO.x + 0.5*facebox_RATIO.width, facebox_RATIO.y + 0.5*facebox_RATIO.height), facebox_RATIO.width, facebox_RATIO.height));//centered_rect(point(93, 110), 38, 86));
-
+                    //printf("--------111--\n");
                     trackflag = 1;
                 }
             }
@@ -305,17 +314,17 @@ int main(int argc, char **argv)
             else if (trackflag == 1 && countframe != SKIP_FRAMES)
             {
 
-                if (!facePostion.is_empty())
-                {
-                    //printf("----------------------what  0----------------------------\n");
-                    tracker.update(cimg_small);
-                    facePostion = tracker.get_position();
-                }
-                else
-                {
-                    facePostion = dlib::rectangle(0, 0, 0, 0);
-                    trackflag = 0;
-                }
+//                if (!facePostion.is_empty())
+//                {
+//                    printf("----------------------what  0----------------------------\n");
+//                    tracker.update(cimg_small);
+//                    facePostion = tracker.get_position();
+//                }
+//                else
+//                {
+//                    facePostion = dlib::rectangle(0, 0, 0, 0);
+//                    trackflag = 0;
+//                }
             }
 
             if (!facePostion.is_empty() && faces.size()>0)
@@ -555,11 +564,14 @@ int main(int argc, char **argv)
 
                 if (eyesClosedLevel < AlarmLevel)
                 {
-                    alarmCount++;
-                    if (alarmCount > AlarmCount)
+//                    alarmCount++;
+//                    if (alarmCount > AlarmCount)
                     {
                         alarmCount = 0;
-
+                        sound.start();
+                        sound.soundName = new char[20];
+                        strcpy(sound.soundName,"2.wav");
+                        //sound.exit(0);
                         //pArg = Py_BuildValue("(s)", "alarm.wav"); //参数类型转换，传递一个字符串。将c/c++类型的字符串转换为python类型，元组中的python类型查看python文档
 
                         //PyEval_CallObject(pFunc, pArg); //调用直接获得的函数，并传递参数
@@ -568,6 +580,16 @@ int main(int argc, char **argv)
                 else
                 {
                     alarmCount = 0;
+                }
+
+
+                if (eyesClosedLevel > AlarmLevel +0.1)
+                {
+
+                    alarmCount = 0;
+                    sound.start();
+                    sound.soundName = new char[20];
+                    strcpy(sound.soundName,"alarm.wav");
                 }
 
                 char PutString[20];
@@ -618,4 +640,3 @@ int main(int argc, char **argv)
    return a.exec();
 
 }
-
