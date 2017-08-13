@@ -20,7 +20,7 @@ using namespace cv;
 
 #define RATIO 1
 #define SKIP_FRAMES 3
-#define AlarmLevel 0.18
+#define AlarmLevel 0.2
 #define AlarmCount 5
 int alarmCount = 0;
 double eyesClosedLevel;
@@ -285,6 +285,9 @@ int main(int argc, char **argv)
 
             //cv::resize(img, img_small, cv::Size(), 1.0 / RATIO, 1.0 / RATIO);
 
+
+
+
             cv_image<dlib::bgr_pixel> cimg(img);
             cv_image<dlib::bgr_pixel> cimg_small(img);
             // Detect faces
@@ -498,15 +501,40 @@ int main(int argc, char **argv)
                     if(dstbox_flag == 0)
                     {
                         cv::Mat eye_left (img_clone,dstbox );
-                        cv::Mat eye_left_24x24;
+                        cv::Mat eye_left_64x64;
 
                         dstbox_flag == 0;
 
-                        resize(eye_left,eye_left_24x24,Size(64,64),0,0,CV_INTER_LINEAR);
+                        resize(eye_left,eye_left_64x64,Size(64,64),0,0,CV_INTER_LINEAR);
                         char im_str[sizeof("eye_close/im%06d.jpg")];
                         sprintf(im_str,"eye_close/im%06d.jpg", im_mum);
                         //imwrite(im_str,eye_left_24x24); //c版本中的保存图片为cvSaveImage()函数，c++版本中直接与matlab的相似，imwrite()函数。
-                        imshow( "face", eye_left_24x24 );
+
+
+                        GaussianBlur(eye_left_64x64, eye_left_64x64, Size(7, 7), 2, 2);
+
+                        std::vector<KeyPoint> keypoints;
+                        // 初始化BLOB参数
+                        SimpleBlobDetector::Params params;
+                        // 几何形状过滤
+                        // 声明根据面积过滤，设置最大与最小面积
+                        params.filterByArea = true;
+                        params.minArea = 20.0f;
+                        params.maxArea = 1000.0f;
+                        // 声明根据圆度过滤，设置最大与最小圆度
+                        params.filterByCircularity = true;
+                        params.minCircularity = 0.5;
+                        params.maxCircularity = 1.0;
+                        // 凸包形状分析 - 过滤凹包
+                        params.filterByConvexity = true;
+                        params.minConvexity = 0.0;
+                        params.maxConvexity = 0.8;
+
+                        Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
+
+                         detector->detect( eye_left_64x64, keypoints );
+                        drawKeypoints(eye_left_64x64 , keypoints, eye_left_64x64 , Scalar(255,255,0));
+                        imshow( "face", eye_left_64x64);
                     }
 
                 }
@@ -583,14 +611,7 @@ int main(int argc, char **argv)
                 }
 
 
-                if (eyesClosedLevel > AlarmLevel +0.1)
-                {
 
-                    alarmCount = 0;
-                    sound.start();
-                    sound.soundName = new char[20];
-                    strcpy(sound.soundName,"alarm.wav");
-                }
 
                 char PutString[20];
                 sprintf(PutString, "eyeCloseLevel:%f\n", eyesClosedLevel);
@@ -603,6 +624,15 @@ int main(int argc, char **argv)
                 render_face(img, shape);
             }
 
+
+            if (eyesClosedLevel > AlarmLevel +0.1 || facePostion.is_empty())
+            {
+
+                alarmCount = 0;
+                sound.start();
+                sound.soundName = new char[20];
+                strcpy(sound.soundName,"alarm.wav");
+            }
             //std::cout << "count:" << count << std::endl;
             //Display it all on the screen
             //win.clear_overlay();
